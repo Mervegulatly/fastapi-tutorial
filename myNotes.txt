@@ -1,0 +1,6 @@
+HTTP methods are often used to represent CRUD operations.
+
+JSON --> JavaScript Object Notation == Verilerin büyük bir kısmı JSON formatında islenir(Hava durumu, kriptolar, kullanıcı bilgileri..)
+[{"key" : "value"}, {"key" : "value"}...]
+
+To get correct matches, use casefold(), upper(), or lower() since string keys may differ in case from input values.
