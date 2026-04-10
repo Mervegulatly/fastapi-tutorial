@@ -41,3 +41,13 @@ async def get_course_by_id(courses_id: int):
     for course in courses_db:
         if course.get('id') == courses_id:
             return course
+
+
+@app.get("/course/")
+async def get_course_by_category(category: str):
+    courses_to_return = []
+    for course in courses_db:
+        if course.get('category').casefold() == category.casefold():
+            courses_to_return.append(course)
+    return courses_to_return
+#http://127.0.0.1:8000/course/?category=development  There is /? symbol the reason is use to query not path
