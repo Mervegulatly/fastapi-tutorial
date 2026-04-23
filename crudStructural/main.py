@@ -21,6 +21,7 @@ class Course:
         self.rating = rating
         self.published_date = published_date
 
+#Bu sınıf genellikle veritabanından gelen veriyi temsil etmek veya (frontend'e) gönderilecek verinin formatını belirlemek için kullanılır.
 class Courses(BaseModel): # Veri Modelleme ve Doğrulama için kullanılır. Veri doğrulama tip güvenliği gibi..
     id: Optional[int] = Field(description = "The id of the course, optional." , default = None)
     title: str = Field(min_length=3, max_length=100)
@@ -28,21 +29,23 @@ class Courses(BaseModel): # Veri Modelleme ve Doğrulama için kullanılır. Ver
     rating: int = Field(gt=0, lt=6)
     published_date: int = Field(gte=1900, lte=2100) #gte = Büyük eşit, lte= küçük eşit anlamına geliyor.
 
+# Burdaki Amaç ise: "Kullanıcı bana veri gönderirken şu kurallara uymak zorunda." demek.
 class CourseRequest(BaseModel):
     id: Optional[int] = Field(description="The id of the course, optional", default=None)
     title: str = Field(min_length=3, max_length=100)
     instructor: str = Field(min_length=3)
     rating: int = Field(gt=0, lt=6)
-    published_date: int = Field(gt=1900, lt=2100)
+    published_date: int = Field(gte=1900, lte=2100)
 
     #Opsional
     model_config = {  #Request atılırken JSON schema'sının yani genel yapısının nasıl olacağının örneğini de vermiş oluyor burda.
         "json_schema_extra":{
             "example":{
+                "id":7,
                 "title": "Example Course",
                 "instructor": "Example Instructor",
                 "rating": 5,
-                "published_date": 1900
+                "published_date": 1950
             }
         }
     }
@@ -88,25 +91,26 @@ async def get_courses_by_publish_date(publish_date: int = Query(gt=2005, lt=2024
     return courses_to_return
 
 
-# Yardımcı fonksiyon: ID atamasını yapar ve nesneyi döner
-def find_course_id(course: Course):
-    # Listenin son elemanının bir nesne olduğundan emin olmalıyız
-    if len(courses_db) > 0:
-        course.id = courses_db[-1].id + 1
-    else:
-        course.id = 1
-    return course
-
-
 @app.post("/create-course", status_code=status.HTTP_201_CREATED)
 async def create_course(course_request: CourseRequest):
-    # 1. Request'ten gelen veriyi Course sınıfı nesnesine dönüştür
     new_course = Course(**course_request.model_dump())
+    courses_db.append(find_course_id(new_course))
 
-    # 2. ID'yi otomatik belirle (Fonksiyonu çağır)
-    new_course = find_course_id(new_course)
 
-    # 3. Listeye ekle (Sadece bir kere!)
-    courses_db.append(new_course)
+def find_course_id(course: Course):
+    if len(courses_db) > 0:
+      course.id = 1 if len(courses_db) == 0 else courses_db[-1].id + 1
+      return course
 
-    return {"message": "Course created successfully", "course": new_course}
+
+@app.put("/courses/update_course", status_code=status.HTTP_204_NO_CONTENT)
+async def update_course(course_request: CourseRequest):
+    course_updated = False
+
+    for i in range(len(courses_db)):
+        if courses_db[i].id == course_request.id:
+            courses_db[i] = course_request
+            course_updated = True
+
+    if not course_updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
